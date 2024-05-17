@@ -38,30 +38,39 @@ func main() {
 	if checkDirExists(cleanedPath) {
 		// Abs might join path with cwd, so this will
 		// also check if the directory is in the cwd
-		fmt.Println(cleanedPath)
-	} else {
-		// Assume that the path is not an actual path but a search query by the user and it might exist
-
-		// TODO: Check the cache first and then proceed. (Make a seperate cache function to check for entry)
-
-		var returnedPath = ""
-		traverseAndMatchDir(".", path, &returnedPath)
-		cwd, err := os.Getwd()
-		handleError(err)
-		traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath)
-		usrHome, err := os.UserHomeDir()
-		handleError(err)
-		traverseAndMatchDir(usrHome, path, &returnedPath)
-
-		if len(returnedPath) == 0 {
-			fmt.Println(path)
-			os.Exit(EXIT_FOLDERNOTFOUND)
+		if ignoreDir {
+			cwd, err := os.Getwd()
+			handleError(err)
+			if !(filepath.Dir(cleanedPath) == cwd) {
+				fmt.Println(cleanedPath)
+				os.Exit(EXIT_SUCCESS)
+			}
 		} else {
-			fmt.Println(returnedPath)
+			fmt.Println(cleanedPath)
 			os.Exit(EXIT_SUCCESS)
 		}
 	}
-	fmt.Printf("it took %v \n", time.Since(startTime)) // defer
+
+	// Assume that the path is not an actual path but a search query by the user and it might exist
+
+	// TODO: Check the cache first and then proceed. (Make a seperate cache function to check for entry)
+
+	var returnedPath = ""
+	if !ignoreDir {
+		traverseAndMatchDir(".", path, &returnedPath)
+	}
+	cwd, err := os.Getwd()
+	handleError(err)
+	traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath)
+	usrHome, err := os.UserHomeDir()
+	handleError(err)
+	traverseAndMatchDir(usrHome, path, &returnedPath)
+
+	if len(returnedPath) == 0 {
+		fmt.Println(path)
+		os.Exit(EXIT_FOLDERNOTFOUND)
+	}
+	fmt.Printf("it took %v \n", time.Since(startTime)) // make it deferred
 	// Max time : 1.6s (Search not found)
 }
 
@@ -81,11 +90,10 @@ func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string) b
 		if f.IsDir() {
 			if f.Name() == searchDir {
 				*pathReturn = path
-				return true
+				fmt.Println(*pathReturn)
+				os.Exit(EXIT_SUCCESS)
 			} else {
-				if traverseAndMatchDir(path, searchDir, pathReturn) {
-					return true
-				}
+				traverseAndMatchDir(path, searchDir, pathReturn)
 			}
 		}
 	}
