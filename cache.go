@@ -5,7 +5,8 @@
 	{
 		"filename" : {
 			"path" : ...,
-			"frequency" : ...
+			"frequency" : ...,
+			"lasthit": ...
 		}
 	}
 	The first entry will always be the previous directory redirected by pathfinder
@@ -18,17 +19,19 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 // The json will be of the type map[string]CacheSchema
 type CacheSchema struct {
-	Path      string `json:"path"`
-	Frequency int    `json:"frequency"`
+	Path      string    `json:"path"`
+	Frequency int       `json:"frequency"`
+	LastHit   time.Time `json:"lasthit"`
 }
 
 type Cache struct {
 	file     string
-	maxCap   int
+	maxCap   int // Only the capacity of the cache items, Does not consider additionals like previous dir entry
 	contents map[string]CacheSchema
 }
 
@@ -104,13 +107,18 @@ func (c *Cache) SetCacheEntry(entry string) {
 				c.contents[filepath.Base(entry)] = CacheSchema{
 					Path:      cacheEntry.Path,
 					Frequency: cacheEntry.Frequency + 1,
+					LastHit:   time.Now(),
 				}
 			}
 		} else {
 			c.contents[filepath.Base(entry)] = CacheSchema{
 				Path:      entry,
 				Frequency: 0,
+				LastHit:   time.Now(),
 			}
+		}
+		if len(c.contents) > (c.maxCap + 1) { // +1 to denote the previous dir store
+			c.popCache()
 		}
 		writeContent, err := json.MarshalIndent(c.contents, "", " ")
 		HandleError(err)
@@ -118,15 +126,26 @@ func (c *Cache) SetCacheEntry(entry string) {
 	}
 }
 
-// func (c *Cache) popCache() {
-// 	// Removes according to LFU
-
-// }
-
-// func (c *Cache) getLeastFrequent() {
-
-// }
-
-// func (c *Cache) clearCache() {
-// 	// Optional
-// }
+func (c *Cache) popCache() {
+	// Removes according to LFU
+	var entryToRemove string
+	for i := range c.contents {
+		if i == PREV_DIR_ENTRY {
+			continue
+		}
+		if len(entryToRemove) == 0 {
+			entryToRemove = i
+		} else {
+			if c.contents[i].Frequency <= c.contents[entryToRemove].Frequency {
+				if c.contents[i].Frequency == c.contents[entryToRemove].Frequency {
+					if c.contents[i].LastHit.Before(c.contents[entryToRemove].LastHit) {
+						entryToRemove = i
+					}
+				} else {
+					entryToRemove = i
+				}
+			}
+		}
+	}
+	delete(c.contents, entryToRemove)
+}

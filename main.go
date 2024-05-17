@@ -33,7 +33,7 @@ func main() {
 		path, _ := filepath.Abs(c.GetPreviousDir())
 		success(path, c)
 	}
-	if path == ""{
+	if path == "" {
 		flaggy.ShowHelpAndExit("Please provide arguments")
 	}
 	cleanedPath, err := filepath.Abs(path)
@@ -93,7 +93,7 @@ func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string, c
 				*pathReturn = path
 				success(*pathReturn, c)
 			} else {
-				traverseAndMatchDir(path, searchDir, pathReturn,c)
+				traverseAndMatchDir(path, searchDir, pathReturn, c)
 			}
 		}
 	}
