@@ -28,11 +28,10 @@ func main() {
 	flaggy.Parse()
 
 	startTime := time.Now()
+	c := InitCache()
 	if previousDir {
-		c := InitCache()
 		path, _ := filepath.Abs(c.GetPreviousDir())
-		fmt.Println(path)
-		os.Exit(EXIT_SUCCESS)
+		success(path, c)
 	}
 	cleanedPath, err := filepath.Abs(path)
 	HandleError(err)
@@ -43,12 +42,10 @@ func main() {
 			cwd, err := os.Getwd()
 			HandleError(err)
 			if !(filepath.Dir(cleanedPath) == cwd) {
-				fmt.Println(cleanedPath)
-				os.Exit(EXIT_SUCCESS)
+				success(cleanedPath, c)
 			}
 		} else {
-			fmt.Println(cleanedPath)
-			os.Exit(EXIT_SUCCESS)
+			success(cleanedPath, c)
 		}
 	}
 
@@ -99,6 +96,13 @@ func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string) b
 	return false
 }
 
+func success(path string, c *Cache){
+	fmt.Println(path)
+	c.WritePreviousDir()
+	os.Exit(EXIT_SUCCESS)
+
+}
+
 func checkDirExists(path string) bool {
 	if _, err := os.Stat(path); os.IsNotExist(err) {
 		return false
@@ -123,5 +127,6 @@ func InitCache() *Cache {
 		maxCap: 10,
 	}
 	c.CheckCache()
+	c.LoadCache()
 	return c
 }
