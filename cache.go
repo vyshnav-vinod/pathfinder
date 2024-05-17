@@ -61,10 +61,30 @@ func (c *Cache) SetPreviousDir(path string) {
 	cwd, err := os.Getwd()
 	HandleError(err)
 	c.contents[PREV_DIR_ENTRY] = CacheSchema{
-		Path: cwd,
+		Path:      cwd,
 		Frequency: -1,
 	}
 	writeContent, err := json.MarshalIndent(c.contents, "", " ")
 	HandleError(err)
 	HandleError(os.WriteFile(c.file, writeContent, 077))
 }
+
+func (c *Cache) GetCacheEntry(entry string, path string) (cacheEntry CacheSchema, ok bool) {
+	if cache, found := c.contents[entry]; found {
+		return cache, true
+	}
+	return CacheSchema{}, false
+}
+
+// func (c *Cache) SetCacheEntry(entry string) {
+// Shoudl check if entry is in cache ,if yes just update
+// else pop from cache and add new entry
+// }
+
+// func (c *Cache) popCache() {
+// 	// Removes according to LFU
+// }
+
+// func (c *Cache) clearCache() {
+// 	// Optional
+// }
