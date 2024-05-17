@@ -8,9 +8,15 @@ import (
 	"github.com/integrii/flaggy"
 )
 
+const (
+	EXIT_SUCCESS = 0
+	EXIT_FAIL    = 1
+	EXIT_ERR     = -1
+)
+
 func main() {
 
-	exitCode := 0
+	exitCode := EXIT_SUCCESS
 	defer func() {
 		os.Exit(exitCode)
 	}()
@@ -28,10 +34,51 @@ func main() {
 	cleanedPath, err := filepath.Abs(path)
 	handleError(err)
 	if checkDirExists(cleanedPath) {
+		// Abs might join path with cwd, so this will
+		// also check if the directory is in the cwd
 		fmt.Println(cleanedPath)
 	} else {
-		exitCode = 33
+		// Assume that the path is not an actual path but a search query by the user and it might exist
+
+		// TODO: Check the cache first and then proceed. (Make a seperate cache function to check for entry)
+
+		var returnedPath = ""
+		traverseAndMatchDir(".", path, &returnedPath)
+		cwd, err := os.Getwd()
+		handleError(err)
+		traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath)
+		usrHome, err := os.UserHomeDir()
+		handleError(err)
+		traverseAndMatchDir(usrHome, path, &returnedPath)
+		fmt.Println("retpath: ", returnedPath)
 	}
+}
+
+func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string) bool {
+	file, err := os.Open(dirName)
+	handleError(err)
+	defer file.Close()
+	dirEntries, err := file.Readdirnames(0)
+	handleError(err)
+	for _, n := range dirEntries {
+		path, err := filepath.Abs(filepath.Join(dirName, n))
+		handleError(err)
+		f, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if f.IsDir() {
+			if f.Name() == searchDir {
+				*pathReturn = path
+				return true
+			} else {
+				if traverseAndMatchDir(path, searchDir, pathReturn) {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 func checkDirExists(path string) bool {
@@ -45,6 +92,6 @@ func checkDirExists(path string) bool {
 func handleError(err error) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[Error] %s\n", err)
-		os.Exit(-1)
+		os.Exit(EXIT_ERR)
 	}
 }

@@ -1,15 +1,14 @@
 #!/bin/sh
 
+# Find a way to get the path of the pathfinder executable
 dir=$(./main "$@")
+
 
 case $? in
     0)
     cd "$dir"
     ;;
-    33)
-    echo "No such dir"
-    ;;
     *)
-    echo "Noooo"
+    echo "$?"
     ;;
 esac
