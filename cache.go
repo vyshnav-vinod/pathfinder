@@ -20,15 +20,16 @@ import (
 	"path/filepath"
 )
 
-type Cache struct {
-	file   string
-	maxCap int
-}
-
 // The json will be of the type map[stringCacheSchema
 type CacheSchema struct {
 	Path      string `json:"path"`
 	Frequency int    `json:"frequency"`
+}
+
+type Cache struct {
+	file     string
+	maxCap   int
+	contents map[string]CacheSchema
 }
 
 const PREV_DIR_ENTRY = "PFpreviousDir"
@@ -45,10 +46,25 @@ func (c *Cache) CheckCache() {
 	}
 }
 
-func (c *Cache) GetPreviousDir() string {
+func (c *Cache) LoadCache() {
+	// Load the cache contents to memory
 	f, err := os.ReadFile(c.file)
 	HandleError(err)
-	var cacheMap map[string]CacheSchema
-	HandleError(json.Unmarshal(f, &cacheMap))
-	return cacheMap[PREV_DIR_ENTRY].Path
+	HandleError(json.Unmarshal(f, &c.contents))
+}
+
+func (c *Cache) GetPreviousDir() string {
+	return c.contents[PREV_DIR_ENTRY].Path
+}
+
+func (c *Cache) SetPreviousDir(path string) {
+	cwd, err := os.Getwd()
+	HandleError(err)
+	c.contents[PREV_DIR_ENTRY] = CacheSchema{
+		Path: cwd,
+		Frequency: -1,
+	}
+	writeContent, err := json.MarshalIndent(c.contents, "", " ")
+	HandleError(err)
+	HandleError(os.WriteFile(c.file, writeContent, 077))
 }

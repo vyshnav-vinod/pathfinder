@@ -53,14 +53,14 @@ func main() {
 
 	var returnedPath = ""
 	if !ignoreDir {
-		traverseAndMatchDir(".", path, &returnedPath)
+		traverseAndMatchDir(".", path, &returnedPath, c)
 	}
 	cwd, err := os.Getwd()
 	HandleError(err)
-	traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath)
+	traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath, c)
 	usrHome, err := os.UserHomeDir()
 	HandleError(err)
-	traverseAndMatchDir(usrHome, path, &returnedPath)
+	traverseAndMatchDir(usrHome, path, &returnedPath, c)
 
 	if len(returnedPath) == 0 {
 		fmt.Println(path)
@@ -70,7 +70,7 @@ func main() {
 	// Max time : 1.6s (Search not found)
 }
 
-func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string) bool {
+func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string, c *Cache) bool {
 	file, err := os.Open(dirName)
 	HandleError(err)
 	defer file.Close()
@@ -86,19 +86,18 @@ func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string) b
 		if f.IsDir() {
 			if f.Name() == searchDir {
 				*pathReturn = path
-				fmt.Println(*pathReturn)
-				os.Exit(EXIT_SUCCESS)
+				success(*pathReturn, c)
 			} else {
-				traverseAndMatchDir(path, searchDir, pathReturn)
+				traverseAndMatchDir(path, searchDir, pathReturn,c)
 			}
 		}
 	}
 	return false
 }
 
-func success(path string, c *Cache){
+func success(path string, c *Cache) {
 	fmt.Println(path)
-	c.WritePreviousDir()
+	c.SetPreviousDir(path)
 	os.Exit(EXIT_SUCCESS)
 
 }
