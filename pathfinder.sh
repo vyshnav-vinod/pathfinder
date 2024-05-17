@@ -13,5 +13,6 @@ case $? in
     ;;
     *)
     echo "$?"
+    echo "$dir"
     ;;
 esac

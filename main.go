@@ -17,30 +17,31 @@ const (
 
 func main() {
 
-	exitCode := EXIT_SUCCESS
-	defer func() {
-		os.Exit(exitCode)
-	}()
-
 	// Flags
-	var previousDir = false
 	var ignoreDir = false
+	var previousDir = false
 	var path string
 
 	flaggy.Bool(&ignoreDir, "i", "ignore", "Ignore searching the current directory")
 	flaggy.Bool(&previousDir, "b", "back", "Change directory to the previous directory")
-	flaggy.AddPositionalValue(&path, "Directory", 1, true, "The name/path of the directory")
+	flaggy.AddPositionalValue(&path, "Directory", 1, false, "The name/path of the directory")
 	flaggy.Parse()
 
 	startTime := time.Now()
+	if previousDir {
+		c := InitCache()
+		path, _ := filepath.Abs(c.GetPreviousDir())
+		fmt.Println(path)
+		os.Exit(EXIT_SUCCESS)
+	}
 	cleanedPath, err := filepath.Abs(path)
-	handleError(err)
+	HandleError(err)
 	if checkDirExists(cleanedPath) {
 		// Abs might join path with cwd, so this will
 		// also check if the directory is in the cwd
 		if ignoreDir {
 			cwd, err := os.Getwd()
-			handleError(err)
+			HandleError(err)
 			if !(filepath.Dir(cleanedPath) == cwd) {
 				fmt.Println(cleanedPath)
 				os.Exit(EXIT_SUCCESS)
@@ -53,17 +54,15 @@ func main() {
 
 	// Assume that the path is not an actual path but a search query by the user and it might exist
 
-	// TODO: Check the cache first and then proceed. (Make a seperate cache function to check for entry)
-
 	var returnedPath = ""
 	if !ignoreDir {
 		traverseAndMatchDir(".", path, &returnedPath)
 	}
 	cwd, err := os.Getwd()
-	handleError(err)
+	HandleError(err)
 	traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath)
 	usrHome, err := os.UserHomeDir()
-	handleError(err)
+	HandleError(err)
 	traverseAndMatchDir(usrHome, path, &returnedPath)
 
 	if len(returnedPath) == 0 {
@@ -76,13 +75,13 @@ func main() {
 
 func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string) bool {
 	file, err := os.Open(dirName)
-	handleError(err)
+	HandleError(err)
 	defer file.Close()
 	dirEntries, err := file.Readdirnames(0)
-	handleError(err)
+	HandleError(err)
 	for _, n := range dirEntries {
 		path, err := filepath.Abs(filepath.Join(dirName, n))
-		handleError(err)
+		HandleError(err)
 		f, err := os.Stat(path)
 		if os.IsNotExist(err) {
 			continue
@@ -108,9 +107,21 @@ func checkDirExists(path string) bool {
 	}
 }
 
-func handleError(err error) {
+func HandleError(err error) {
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "[Error] %s\n", err)
 		os.Exit(EXIT_ERR)
 	}
+}
+
+func InitCache() *Cache {
+	cf, err := os.UserCacheDir()
+	HandleError(err)
+	cacheFile := filepath.Join(cf, "pathfinder", "cache.json")
+	c := &Cache{
+		file:   cacheFile,
+		maxCap: 10,
+	}
+	c.CheckCache()
+	return c
 }
