@@ -2,11 +2,18 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"path/filepath"
 
 	"github.com/integrii/flaggy"
 )
 
-func main(){
+func main() {
+
+	exitCode := 0
+	defer func() {
+		os.Exit(exitCode)
+	}()
 
 	// Flags
 	var previousDir = false
@@ -18,5 +25,26 @@ func main(){
 	flaggy.AddPositionalValue(&path, "Directory", 1, true, "The name/path of the directory")
 	flaggy.Parse()
 
-	
+	cleanedPath, err := filepath.Abs(path)
+	handleError(err)
+	if checkDirExists(cleanedPath) {
+		fmt.Println(cleanedPath)
+	} else {
+		exitCode = 33
+	}
+}
+
+func checkDirExists(path string) bool {
+	if _, err := os.Stat(path); os.IsNotExist(err) {
+		return false
+	} else {
+		return true
+	}
+}
+
+func handleError(err error) {
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "[Error] %s\n", err)
+		os.Exit(-1)
+	}
 }
