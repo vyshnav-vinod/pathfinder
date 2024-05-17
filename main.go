@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/integrii/flaggy"
@@ -75,29 +76,30 @@ func main() {
 	// Max time : 1.6s (Search not found)
 }
 
-func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string, c *Cache) bool {
-	file, err := os.Open(dirName)
-	HandleError(err)
-	defer file.Close()
-	dirEntries, err := file.Readdirnames(0)
-	HandleError(err)
-	for _, n := range dirEntries {
-		path, err := filepath.Abs(filepath.Join(dirName, n))
+func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string, c *Cache) {
+	if !strings.HasPrefix(filepath.Base(dirName), ".") {
+		file, err := os.Open(dirName)
 		HandleError(err)
-		f, err := os.Stat(path)
-		if os.IsNotExist(err) {
-			continue
-		}
-		if f.IsDir() {
-			if f.Name() == searchDir {
-				*pathReturn = path
-				success(*pathReturn, c)
-			} else {
-				traverseAndMatchDir(path, searchDir, pathReturn, c)
+		defer file.Close()
+		dirEntries, err := file.Readdirnames(0)
+		HandleError(err)
+		for _, n := range dirEntries {
+			path, err := filepath.Abs(filepath.Join(dirName, n))
+			HandleError(err)
+			f, err := os.Stat(path)
+			if os.IsNotExist(err) {
+				continue
+			}
+			if f.IsDir() {
+				if f.Name() == searchDir {
+					*pathReturn = path
+					success(*pathReturn, c)
+				} else {
+					traverseAndMatchDir(path, searchDir, pathReturn, c)
+				}
 			}
 		}
 	}
-	return false
 }
 
 func success(path string, c *Cache) {
