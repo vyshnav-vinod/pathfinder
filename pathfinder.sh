@@ -1,12 +1,15 @@
 #!/bin/sh
 
-# Find a way to get the path of the pathfinder executable
-dir=$(./main "$@")
+# pfexecpath should be equal to the path of the pathfinder executable
+dir=$(pfexecpath "$@")
 
 
 case $? in
     0)
     cd "$dir"
+    ;;
+    1)
+    echo "pf: Folder not found : $dir"
     ;;
     *)
     echo "$?"

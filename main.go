@@ -4,14 +4,15 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/integrii/flaggy"
 )
 
 const (
-	EXIT_SUCCESS = 0
-	EXIT_FAIL    = 1
-	EXIT_ERR     = -1
+	EXIT_SUCCESS        = 0
+	EXIT_FOLDERNOTFOUND = 1
+	EXIT_ERR            = -1
 )
 
 func main() {
@@ -31,6 +32,7 @@ func main() {
 	flaggy.AddPositionalValue(&path, "Directory", 1, true, "The name/path of the directory")
 	flaggy.Parse()
 
+	startTime := time.Now()
 	cleanedPath, err := filepath.Abs(path)
 	handleError(err)
 	if checkDirExists(cleanedPath) {
@@ -50,8 +52,17 @@ func main() {
 		usrHome, err := os.UserHomeDir()
 		handleError(err)
 		traverseAndMatchDir(usrHome, path, &returnedPath)
-		fmt.Println("retpath: ", returnedPath)
+
+		if len(returnedPath) == 0 {
+			fmt.Println(path)
+			os.Exit(EXIT_FOLDERNOTFOUND)
+		} else {
+			fmt.Println(returnedPath)
+			os.Exit(EXIT_SUCCESS)
+		}
 	}
+	fmt.Printf("it took %v \n", time.Since(startTime)) // defer
+	// Max time : 1.6s (Search not found)
 }
 
 func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string) bool {
