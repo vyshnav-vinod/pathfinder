@@ -53,7 +53,7 @@ func main() {
 	}
 
 	// Assume that the path is not an actual path but a search query by the user and it might exist
-	if cacheEntry, ok := c.GetCacheEntry(filepath.Base(path), path); ok {
+	if cacheEntry, ok := c.GetCacheEntry(filepath.Base(path)); ok {
 		success(cacheEntry.Path, c)
 	}
 	var returnedPath = ""

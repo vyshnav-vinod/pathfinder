@@ -87,7 +87,7 @@ func (c *Cache) SetPreviousDir() {
 	HandleError(os.WriteFile(c.file, writeContent, 077))
 }
 
-func (c *Cache) GetCacheEntry(entry string, path string) (cacheEntry CacheSchema, ok bool) {
+func (c *Cache) GetCacheEntry(entry string) (cacheEntry CacheSchema, ok bool) {
 	if cache, found := c.contents[entry]; found {
 		return cache, true
 	}
@@ -97,14 +97,25 @@ func (c *Cache) GetCacheEntry(entry string, path string) (cacheEntry CacheSchema
 func (c *Cache) SetCacheEntry(entry string) {
 	// Shoudl check if entry is in cache ,if yes just update
 	// else pop from cache and add new entry
-
-	c.contents[filepath.Base(entry)] = CacheSchema{
-		Path:      entry,
-		Frequency: 0,
+	home, _ := os.UserHomeDir()
+	if !(entry == home) { //  Do not add home directory to cache
+		if cacheEntry, ok := c.GetCacheEntry(filepath.Base(entry)); ok {
+			if cacheEntry.Path == entry {
+				c.contents[filepath.Base(entry)] = CacheSchema{
+					Path:      cacheEntry.Path,
+					Frequency: cacheEntry.Frequency + 1,
+				}
+			}
+		} else {
+			c.contents[filepath.Base(entry)] = CacheSchema{
+				Path:      entry,
+				Frequency: 0,
+			}
+		}
+		writeContent, err := json.MarshalIndent(c.contents, "", " ")
+		HandleError(err)
+		HandleError(os.WriteFile(c.file, writeContent, 077))
 	}
-	writeContent, err := json.MarshalIndent(c.contents, "", " ")
-	HandleError(err)
-	HandleError(os.WriteFile(c.file, writeContent, 077))
 }
 
 // func (c *Cache) popCache() {
