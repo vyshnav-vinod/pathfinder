@@ -12,7 +12,5 @@ case $? in
     echo "pf: Folder not found : $dir"
     ;;
     *)
-    echo "$?"
-    echo "$dir"
     ;;
 esac

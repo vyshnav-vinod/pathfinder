@@ -33,6 +33,9 @@ func main() {
 		path, _ := filepath.Abs(c.GetPreviousDir())
 		success(path, c)
 	}
+	if path == ""{
+		flaggy.ShowHelpAndExit("Please provide arguments")
+	}
 	cleanedPath, err := filepath.Abs(path)
 	HandleError(err)
 	if checkDirExists(cleanedPath) {
@@ -100,9 +103,8 @@ func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string, c
 func success(path string, c *Cache) {
 	fmt.Println(path)
 	c.SetPreviousDir()
-	// c.SetCacheEntry()
+	c.SetCacheEntry(path)
 	os.Exit(EXIT_SUCCESS)
-
 }
 
 func checkDirExists(path string) bool {
