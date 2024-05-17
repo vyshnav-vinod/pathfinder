@@ -3,6 +3,10 @@
 # pfexecpath should be equal to the path of the pathfinder executable
 dir=$(pfexecpath "$@")
 
+# EXIT CODES
+#  0 - Success
+#  1 - Folder not found
+# -1 - Error
 
 case $? in
     0)
