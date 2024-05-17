@@ -99,7 +99,8 @@ func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string, c
 
 func success(path string, c *Cache) {
 	fmt.Println(path)
-	c.SetPreviousDir(path)
+	c.SetPreviousDir()
+	// c.SetCacheEntry()
 	os.Exit(EXIT_SUCCESS)
 
 }

@@ -54,10 +54,15 @@ func (c *Cache) LoadCache() {
 }
 
 func (c *Cache) GetPreviousDir() string {
+	if _, ok := c.contents[PREV_DIR_ENTRY]; ok {
+		return c.contents[PREV_DIR_ENTRY].Path
+	} else {
+		c.SetPreviousDir()
 	return c.contents[PREV_DIR_ENTRY].Path
 }
+}
 
-func (c *Cache) SetPreviousDir(path string) {
+func (c *Cache) SetPreviousDir() {
 	cwd, err := os.Getwd()
 	HandleError(err)
 	c.contents[PREV_DIR_ENTRY] = CacheSchema{
