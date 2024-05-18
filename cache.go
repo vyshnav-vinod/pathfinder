@@ -58,8 +58,10 @@ func (c *Cache) validateCache() {
 	HandleError(err)
 	if len(f) == 0 {
 		tmpMap := make(map[string]CacheSchema)
+		usrHome, err := os.UserHomeDir()
+		HandleError(err)
 		tmpMap[PREV_DIR_ENTRY] = CacheSchema{
-			Path:      "~",
+			Path:      usrHome,
 			Frequency: -1,
 		}
 		t, err := json.MarshalIndent(tmpMap, "", " ")
