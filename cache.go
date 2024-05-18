@@ -46,15 +46,17 @@ func (c *Cache) CheckCache() {
 		HandleError(os.MkdirAll(filepath.Dir(c.file), 0777))
 		_, err = os.Create(c.file)
 		HandleError(err)
-		c.validateCache()
 	}
+	c.validateCache()
 }
 
 func (c *Cache) validateCache() {
 	// Check if cache file is empty and if it is
 	// write a default cache data into it
 	// This check is to prevent "assignment to entry in nil map panic"
-	if len(c.contents) == 0 {
+	f, err := os.ReadFile(c.file)
+	HandleError(err)
+	if len(f) == 0 {
 		tmpMap := make(map[string]CacheSchema)
 		tmpMap[PREV_DIR_ENTRY] = CacheSchema{
 			Path:      "~",
@@ -71,7 +73,6 @@ func (c *Cache) LoadCache() {
 	f, err := os.ReadFile(c.file)
 	HandleError(err)
 	HandleError(json.Unmarshal(f, &c.contents))
-	c.validateCache() // check if the cache file exists but is empty
 }
 
 func (c *Cache) GetPreviousDir() string {
