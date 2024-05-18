@@ -60,6 +60,7 @@ pf [directory name/path] (flags)
 
 - `-b, --back` : Move back to the previous directory from where `pathfinder` was called.
 - `-i, --ignore` : Ignore searching for the folder in the current directory
+- `--clean` : Clean the cache. If you encounter any unexpected behaviour, try this.
 - `-h, --help` : Display the help message
 
 ## Examples

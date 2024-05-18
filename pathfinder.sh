@@ -6,6 +6,7 @@ dir=$(pfexecpath "$@")
 # EXIT CODES
 #  0 - Success
 #  1 - Folder not found
+#  4 - Cache cleaned successfully
 # -1 - Error
 
 case $? in
@@ -14,6 +15,9 @@ case $? in
     ;;
     1)
     echo "pf: Folder not found : $dir"
+    ;;
+    4)
+    echo "Cache cleaned"
     ;;
     *)
     ;;

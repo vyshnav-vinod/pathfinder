@@ -13,23 +13,32 @@ import (
 const (
 	EXIT_SUCCESS        = 0
 	EXIT_FOLDERNOTFOUND = 1
+	EXIT_CACHECLEANED   = 4
 	EXIT_ERR            = -1
+)
+
+// Flags
+var (
+	ignoreDir   = false
+	previousDir = false
+	cleanCache  = false
+	path        string
 )
 
 func main() {
 
-	// Flags
-	var ignoreDir = false
-	var previousDir = false
-	var path string
-
 	flaggy.Bool(&ignoreDir, "i", "ignore", "Ignore searching the current directory")
 	flaggy.Bool(&previousDir, "b", "back", "Change directory to the previous directory")
+	flaggy.Bool(&cleanCache, "", "clean", "Clean the cache")
 	flaggy.AddPositionalValue(&path, "Directory", 1, false, "The name/path of the directory")
 	flaggy.Parse()
 
 	startTime := time.Now()
 	c := InitCache()
+	if cleanCache {
+		c.cleanCache()
+		os.Exit(EXIT_CACHECLEANED)
+	}
 	if previousDir {
 		path, _ := filepath.Abs(c.GetPreviousDir())
 		success(path, c)

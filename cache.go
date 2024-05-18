@@ -152,3 +152,7 @@ func (c *Cache) popCache() {
 	}
 	delete(c.contents, entryToRemove)
 }
+
+func (c *Cache) cleanCache() {
+	HandleError(os.WriteFile(c.file, []byte{}, 0777))
+}
