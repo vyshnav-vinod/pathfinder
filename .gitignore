@@ -21,6 +21,4 @@
 go.work
 
 plan.txt
-pathfinder_dev.sh
-main
-pathfinder
+pathfinder.sh

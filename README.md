@@ -14,36 +14,30 @@ Pathfinder is a command-line tool that helps you navigate between directories wi
 > [!WARNING]
 > Pathfinder is only tested in Linux right now.
 
-Pathfinder has a big limitation which can be overcomed only through a small step of methods that must be done to get pathfinder working.
-
-> [!IMPORTANT]
-> I will make a install script to make help you install pathfinder easily. Till then please follow the below steps
 
 - Clone this repository
 ```
 git clone https://github.com/vyshnav-vinod/pathfinder.git
 ```
 
-- Make sure you have go installed and run (you should be inside the cloned folder)
+- Move into the cloned folder
 ```
-go build -o pathfinder
+cd path/to/clone
 ```
 
+- Mark `install.sh` as executable
+```
+chmod +x install.sh
+```
+
+- Run `install.sh`
+```
+./install.sh
+```
 > [!NOTE]
-> You can also use `go install`, I mentioned this method to make it easier for you to find the path of the executable 
+> This will create a alias named pf in your `.bashrc` and also a `pathfinder.sh` script which is required to run pathfinder
 
-- Open `pathfinder.sh` in any text editor and replace `pfexecpath` in Line 4 with the full path of `pathfinder` (The executable that was produced using the `go build`) command
-
-- Open `~/.bashrc` in any text editor and add a alias to run `pathfinder.sh` at the end of the file
-```
-alias pf='. /path/to/pathfinder.sh'
-```
-or
-```
-alias pf='source /path/to/pathfinder.sh'
-```
-
-- Restart your terminal or just reload bashrc
+- If successful, reload the terminal or use the source command
 ```
 source ~/.bashrc
 ```
