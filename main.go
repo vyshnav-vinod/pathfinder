@@ -134,9 +134,15 @@ func HandleError(err error) {
 }
 
 func InitCache() *Cache {
-	cf, err := os.UserCacheDir()
-	HandleError(err)
-	cacheFile := filepath.Join(cf, "pathfinder", "cache.json")
+	var cacheFile string
+	if _, ok := os.LookupEnv("PF_TMP_TEST"); !ok {
+		cf, err := os.UserCacheDir()
+		HandleError(err)
+		cacheFile = filepath.Join(cf, "pathfinder", "cache.json")
+	} else {
+		// This is done for testing. See main_test.go for more info
+		cacheFile = os.Getenv("PF_TMP_TEST")
+	}
 	c := &Cache{
 		file:   cacheFile,
 		maxCap: 10,
