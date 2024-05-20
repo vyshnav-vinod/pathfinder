@@ -68,14 +68,14 @@ func main() {
 	}
 	var returnedPath = ""
 	if !ignoreDir {
-		traverseAndMatchDir(".", path, &returnedPath, c)
+		traverseAndMatchDir(".", path, &returnedPath, c) // Walk inside cwd
 	}
 	cwd, err := os.Getwd()
 	HandleError(err)
-	traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath, c)
+	traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath, c) // Walk from one directory above
 	usrHome, err := os.UserHomeDir()
 	HandleError(err)
-	traverseAndMatchDir(usrHome, path, &returnedPath, c)
+	traverseAndMatchDir(usrHome, path, &returnedPath, c) // Walk from $HOME
 
 	if len(returnedPath) == 0 {
 		fmt.Println(path)
@@ -141,7 +141,7 @@ func InitCache() *Cache {
 		cacheFile = filepath.Join(cf, "pathfinder", "cache.json")
 	} else {
 		// This is done for testing. See main_test.go for more info
-		cacheFile = os.Getenv("PF_TMP_TEST")
+		cacheFile = filepath.Join(os.Getenv("PF_TMP_TEST"), "cache.json")
 	}
 	c := &Cache{
 		file:   cacheFile,
