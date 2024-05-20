@@ -2,10 +2,10 @@ package main
 
 import (
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/integrii/flaggy"
 )
@@ -17,15 +17,17 @@ const (
 	EXIT_ERR            = -1
 )
 
-// Flags
-var (
-	ignoreDir   = false
-	previousDir = false
-	cleanCache  = false
-	path        string
-)
-
+// TODO: Fix --ignore
+// TODO: Add a version and build number
 func main() {
+
+	// Flags
+	var (
+		ignoreDir   = false
+		previousDir = false
+		cleanCache  = false
+		path        string
+	)
 
 	flaggy.Bool(&ignoreDir, "i", "ignore", "Ignore searching the current directory")
 	flaggy.Bool(&previousDir, "b", "back", "Change directory to the previous directory")
@@ -33,19 +35,24 @@ func main() {
 	flaggy.AddPositionalValue(&path, "Directory", 1, false, "The name/path of the directory")
 	flaggy.Parse()
 
-	startTime := time.Now()
 	c := InitCache()
+
 	if cleanCache {
 		c.cleanCache()
 		os.Exit(EXIT_CACHECLEANED)
 	}
 	if previousDir {
 		path, _ := filepath.Abs(c.GetPreviousDir())
-		success(path, c)
+		os.Exit(success(os.Stdout, path, c))
 	}
 	if path == "" {
 		flaggy.ShowHelpAndExit("Please provide arguments")
 	}
+
+	os.Exit(pathfinder(os.Stdout, c, ignoreDir, path))
+}
+
+func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int{
 	cleanedPath, err := filepath.Abs(path)
 	HandleError(err)
 	if checkDirExists(cleanedPath) {
@@ -55,37 +62,41 @@ func main() {
 			cwd, err := os.Getwd()
 			HandleError(err)
 			if !(filepath.Dir(cleanedPath) == cwd) {
-				success(cleanedPath, c)
+				return success(w, cleanedPath, c)
 			}
 		} else {
-			success(cleanedPath, c)
+			return success(w, cleanedPath, c)
 		}
 	}
 
 	// Assume that the path is not an actual path but a search query by the user and it might exist
 	if cacheEntry, ok := c.GetCacheEntry(filepath.Base(path)); ok {
-		success(cacheEntry.Path, c)
+		return success(w, cacheEntry.Path, c)
 	}
-	var returnedPath = ""
+	var pathReturned string
 	if !ignoreDir {
-		traverseAndMatchDir(".", path, &returnedPath, c)
+		traverseAndMatchDir(w, ".", path, &pathReturned, c) // Walk inside working directory
 	}
 	cwd, err := os.Getwd()
 	HandleError(err)
-	traverseAndMatchDir(filepath.Dir(cwd), path, &returnedPath, c)
+	traverseAndMatchDir(w, filepath.Dir(cwd), path, &pathReturned, c) // Walk from one directory above
 	usrHome, err := os.UserHomeDir()
 	HandleError(err)
-	traverseAndMatchDir(usrHome, path, &returnedPath, c)
+	traverseAndMatchDir(w, usrHome, path, &pathReturned, c) // Walk from $HOME
 
-	if len(returnedPath) == 0 {
-		fmt.Println(path)
-		os.Exit(EXIT_FOLDERNOTFOUND)
+	if len(pathReturned) == 0 {
+		// pathfinder failed to find the directory and prints
+		// the path (user input) to stdout for the bash script
+		// to capture and return as an error msg
+		// fmt.Println(path)
+		fmt.Fprint(w, path)
+		return EXIT_FOLDERNOTFOUND
+	} else {
+		return success(w, pathReturned, c)
 	}
-	fmt.Printf("it took %v \n", time.Since(startTime)) // make it deferred
-	// Max time : 1.6s (Search not found)
 }
 
-func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string, c *Cache) {
+func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathReturned *string, c *Cache) {
 	if !strings.HasPrefix(filepath.Base(dirName), ".") {
 		file, err := os.Open(dirName)
 		HandleError(err)
@@ -101,21 +112,22 @@ func traverseAndMatchDir(dirName string, searchDir string, pathReturn *string, c
 			}
 			if f.IsDir() {
 				if f.Name() == searchDir {
-					*pathReturn = path
-					success(*pathReturn, c)
+					*pathReturned = path
 				} else {
-					traverseAndMatchDir(path, searchDir, pathReturn, c)
+					traverseAndMatchDir(w, path, searchDir, pathReturned, c)
 				}
 			}
 		}
 	}
 }
 
-func success(path string, c *Cache) {
-	fmt.Println(path)
+func success(w io.Writer, path string, c *Cache) int{
+	// Prints to stdout for bash script to capture
+	// fmt.Println(path)
+	fmt.Fprint(w, path)
 	c.SetPreviousDir()
 	c.SetCacheEntry(path)
-	os.Exit(EXIT_SUCCESS)
+	return EXIT_SUCCESS
 }
 
 func checkDirExists(path string) bool {
@@ -134,9 +146,16 @@ func HandleError(err error) {
 }
 
 func InitCache() *Cache {
-	cf, err := os.UserCacheDir()
-	HandleError(err)
-	cacheFile := filepath.Join(cf, "pathfinder", "cache.json")
+	var cacheFile string
+	if _, ok := os.LookupEnv("PF_TMP_TEST"); !ok {
+		// This is done for testing. See main_test.go for more info
+		cf, err := os.UserCacheDir()
+		HandleError(err)
+		cacheFile = filepath.Join(cf, "pathfinder", "cache.json")
+	} else {
+		// This is done for testing. See main_test.go for more info
+		cacheFile = filepath.Join(os.Getenv("PF_TMP_TEST"), "cache.json")
+	}
 	c := &Cache{
 		file:   cacheFile,
 		maxCap: 10,
