@@ -17,6 +17,7 @@ const (
 	EXIT_ERR            = -1
 )
 
+// TODO: Fix --ignore
 // TODO: Add a version and build number
 func main() {
 
@@ -42,16 +43,16 @@ func main() {
 	}
 	if previousDir {
 		path, _ := filepath.Abs(c.GetPreviousDir())
-		success(os.Stdout, path, c)
+		os.Exit(success(os.Stdout, path, c))
 	}
 	if path == "" {
 		flaggy.ShowHelpAndExit("Please provide arguments")
 	}
 
-	pathfinder(os.Stdout, c, ignoreDir, path)
+	os.Exit(pathfinder(os.Stdout, c, ignoreDir, path))
 }
 
-func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) {
+func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int{
 	cleanedPath, err := filepath.Abs(path)
 	HandleError(err)
 	if checkDirExists(cleanedPath) {
@@ -61,40 +62,41 @@ func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) {
 			cwd, err := os.Getwd()
 			HandleError(err)
 			if !(filepath.Dir(cleanedPath) == cwd) {
-				success(w, cleanedPath, c)
+				return success(w, cleanedPath, c)
 			}
 		} else {
-			success(w, cleanedPath, c)
+			return success(w, cleanedPath, c)
 		}
 	}
 
 	// Assume that the path is not an actual path but a search query by the user and it might exist
 	if cacheEntry, ok := c.GetCacheEntry(filepath.Base(path)); ok {
-		success(w, cacheEntry.Path, c)
+		return success(w, cacheEntry.Path, c)
 	}
-	var found = false
+	var pathReturned string
 	if !ignoreDir {
-		traverseAndMatchDir(w, ".", path, &found, c) // Walk inside working directory
+		traverseAndMatchDir(w, ".", path, &pathReturned, c) // Walk inside working directory
 	}
 	cwd, err := os.Getwd()
 	HandleError(err)
-	traverseAndMatchDir(w, filepath.Dir(cwd), path, &found, c) // Walk from one directory above
+	traverseAndMatchDir(w, filepath.Dir(cwd), path, &pathReturned, c) // Walk from one directory above
 	usrHome, err := os.UserHomeDir()
 	HandleError(err)
-	traverseAndMatchDir(w, usrHome, path, &found, c) // Walk from $HOME
+	traverseAndMatchDir(w, usrHome, path, &pathReturned, c) // Walk from $HOME
 
-	if !found {
+	if len(pathReturned) == 0 {
 		// pathfinder failed to find the directory and prints
 		// the path (user input) to stdout for the bash script
 		// to capture and return as an error msg
 		// fmt.Println(path)
 		fmt.Fprint(w, path)
-		os.Exit(EXIT_FOLDERNOTFOUND)
+		return EXIT_FOLDERNOTFOUND
+	} else {
+		return success(w, pathReturned, c)
 	}
-
 }
 
-func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, found *bool, c *Cache) {
+func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathReturned *string, c *Cache) {
 	if !strings.HasPrefix(filepath.Base(dirName), ".") {
 		file, err := os.Open(dirName)
 		HandleError(err)
@@ -110,23 +112,22 @@ func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, found *b
 			}
 			if f.IsDir() {
 				if f.Name() == searchDir {
-					*found = true
-					success(w, path, c)
+					*pathReturned = path
 				} else {
-					traverseAndMatchDir(w, path, searchDir, found, c)
+					traverseAndMatchDir(w, path, searchDir, pathReturned, c)
 				}
 			}
 		}
 	}
 }
 
-func success(w io.Writer, path string, c *Cache) {
+func success(w io.Writer, path string, c *Cache) int{
 	// Prints to stdout for bash script to capture
 	// fmt.Println(path)
 	fmt.Fprint(w, path)
 	c.SetPreviousDir()
 	c.SetCacheEntry(path)
-	os.Exit(EXIT_SUCCESS)
+	return EXIT_SUCCESS
 }
 
 func checkDirExists(path string) bool {
