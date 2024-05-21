@@ -22,8 +22,8 @@ import (
 	"time"
 )
 
-// The json will be of the type map[string]CacheSchema
-type CacheSchema struct {
+// The json will be of the type map[string]CacheEntry
+type CacheEntry struct {
 	Path      string    `json:"path"`
 	Frequency int       `json:"frequency"`
 	LastHit   time.Time `json:"lasthit"`
@@ -32,7 +32,7 @@ type CacheSchema struct {
 type Cache struct {
 	file     string
 	maxCap   int // Only the capacity of the cache items, Does not consider additionals like previous dir entry
-	contents map[string]CacheSchema
+	contents map[string]CacheEntry
 }
 
 const PREV_DIR_ENTRY = "PFpreviousDir"
@@ -57,10 +57,10 @@ func (c *Cache) validateCache() {
 	f, err := os.ReadFile(c.file)
 	HandleError(err)
 	if len(f) == 0 {
-		tmpMap := make(map[string]CacheSchema)
+		tmpMap := make(map[string]CacheEntry)
 		usrHome, err := os.UserHomeDir()
 		HandleError(err)
-		tmpMap[PREV_DIR_ENTRY] = CacheSchema{
+		tmpMap[PREV_DIR_ENTRY] = CacheEntry{
 			Path:      usrHome,
 			Frequency: -1,
 		}
@@ -84,7 +84,7 @@ func (c *Cache) GetPreviousDir() string {
 func (c *Cache) SetPreviousDir() {
 	cwd, err := os.Getwd()
 	HandleError(err)
-	c.contents[PREV_DIR_ENTRY] = CacheSchema{
+	c.contents[PREV_DIR_ENTRY] = CacheEntry{
 		Path:      cwd,
 		Frequency: -1,
 	}
@@ -93,11 +93,11 @@ func (c *Cache) SetPreviousDir() {
 	HandleError(os.WriteFile(c.file, writeContent, 077))
 }
 
-func (c *Cache) GetCacheEntry(entry string) (cacheEntry CacheSchema, ok bool) {
+func (c *Cache) GetCacheEntry(entry string) (cacheEntry CacheEntry, ok bool) {
 	if cache, found := c.contents[entry]; found {
 		return cache, true
 	}
-	return CacheSchema{}, false
+	return CacheEntry{}, false
 }
 
 func (c *Cache) SetCacheEntry(entry string) {
@@ -107,14 +107,14 @@ func (c *Cache) SetCacheEntry(entry string) {
 	if !(entry == home) { //  Do not add home directory to cache
 		if cacheEntry, ok := c.GetCacheEntry(filepath.Base(entry)); ok {
 			if cacheEntry.Path == entry {
-				c.contents[filepath.Base(entry)] = CacheSchema{
+				c.contents[filepath.Base(entry)] = CacheEntry{
 					Path:      cacheEntry.Path,
 					Frequency: cacheEntry.Frequency + 1,
 					LastHit:   time.Now(),
 				}
 			}
 		} else {
-			c.contents[filepath.Base(entry)] = CacheSchema{
+			c.contents[filepath.Base(entry)] = CacheEntry{
 				Path:      entry,
 				Frequency: 0,
 				LastHit:   time.Now(),
