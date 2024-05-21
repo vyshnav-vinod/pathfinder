@@ -20,10 +20,10 @@ const (
 )
 
 var (
-	VERSION     string 
+	VERSION     string
 	BUILD_NUM   string
-	NAME        string = "pf"
-	DESCRIPTION        = "A command line tool to move between directories easily and fast."
+	NAME        = "pf"
+	DESCRIPTION = "A command line tool to move between directories easily and fast."
 )
 
 func main() {
