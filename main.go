@@ -53,16 +53,38 @@ func main() {
 }
 
 func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
+
+	absPath, err := filepath.Abs(path)
+	HandleError(err)
+	cwd, err := os.Getwd()
+	HandleError(err)
+
+	if _, err := os.Stat(absPath); !os.IsNotExist(err) {
+		// To support ~, .. , etc
+		if !ignoreDir {
+			return success(w, absPath, c)
+		} else {
+			if !strings.Contains(absPath, cwd) { // Check if it is in current directory
+				return success(w, absPath, c)
+			}
+		}
+	}
+
 	// Assume that the path is not an actual path but a search query by the user and it might exist
 	if cacheEntry, ok := c.GetCacheEntry(filepath.Base(path)); ok {
-		return success(w, cacheEntry.Path, c)
+		if !ignoreDir {
+			return success(w, cacheEntry.Path, c)
+		} else {
+			if !strings.Contains(cacheEntry.Path, cwd) { // Check if it is in current directory
+				return success(w, cacheEntry.Path, c)
+			}
+		}
 	}
 
 	var pathReturned string
 	var dirsAlreadyWalked []string // to ignore walking through already walked directories
 
-	cwd, err := os.Getwd()
-	HandleError(err)
+	// TODO: Goroutines or a new algorithm
 	if !ignoreDir {
 		if traverseAndMatchDir(w, cwd, path, &pathReturned, dirsAlreadyWalked, c) {
 			// Walk inside working directory
