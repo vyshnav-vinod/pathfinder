@@ -15,10 +15,17 @@ const (
 	EXIT_SUCCESS        = 0
 	EXIT_FOLDERNOTFOUND = 1
 	EXIT_CACHECLEANED   = 4
+	EXIT_INFO           = 5
 	EXIT_ERR            = -1
 )
 
-// TODO: Add a version and build number
+var (
+	VERSION     string 
+	BUILD_NUM   string
+	NAME        string = "pf"
+	DESCRIPTION        = "A command line tool to move between directories easily and fast."
+)
+
 func main() {
 
 	// Flags
@@ -26,14 +33,24 @@ func main() {
 		ignoreDir   = false
 		previousDir = false
 		cleanCache  = false
+		info        = false
 		path        string
 	)
 
 	flaggy.Bool(&ignoreDir, "i", "ignore", "Ignore searching the current directory")
 	flaggy.Bool(&previousDir, "b", "back", "Change directory to the previous directory")
 	flaggy.Bool(&cleanCache, "", "clean", "Clean the cache")
+	flaggy.Bool(&info, "", "info", "Display version and build number")
 	flaggy.AddPositionalValue(&path, "Directory", 1, false, "The name/path of the directory")
+	flaggy.SetName(NAME)
+	flaggy.SetDescription(DESCRIPTION)
+	flaggy.DefaultParser.DisableShowVersionWithVersion()
 	flaggy.Parse()
+
+	if info {
+		fmt.Fprintf(os.Stdout, "Version:%s  Build:%s", VERSION, BUILD_NUM)
+		os.Exit(EXIT_INFO)
+	}
 
 	c := InitCache()
 

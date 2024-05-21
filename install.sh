@@ -17,6 +17,7 @@ dir=\$($exec_path \"\$@\")
 #  0 - Success
 #  1 - Folder not found
 #  4 - Cache cleaned successfully
+#  5 - Info returned
 # -1 - Error
 
 case \$? in
@@ -28,6 +29,9 @@ case \$? in
     ;;
     4)
     echo \"Cache cleaned\"
+    ;;
+    5)
+    echo \$dir
     ;;
     *)
     ;;
