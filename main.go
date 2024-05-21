@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 
 	"github.com/integrii/flaggy"
@@ -17,7 +18,6 @@ const (
 	EXIT_ERR            = -1
 )
 
-// TODO: Fix --ignore
 // TODO: Add a version and build number
 func main() {
 
@@ -52,52 +52,69 @@ func main() {
 	os.Exit(pathfinder(os.Stdout, c, ignoreDir, path))
 }
 
-func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int{
-	cleanedPath, err := filepath.Abs(path)
+func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
+
+	absPath, err := filepath.Abs(path)
 	HandleError(err)
-	if checkDirExists(cleanedPath) {
-		// Abs might join path with cwd, so this will
-		// also check if the directory is in the cwd
-		if ignoreDir {
-			cwd, err := os.Getwd()
-			HandleError(err)
-			if !(filepath.Dir(cleanedPath) == cwd) {
-				return success(w, cleanedPath, c)
-			}
+	cwd, err := os.Getwd()
+	HandleError(err)
+
+	if _, err := os.Stat(absPath); !os.IsNotExist(err) {
+		// To support ~, .. , etc
+		if !ignoreDir {
+			return success(w, absPath, c)
 		} else {
-			return success(w, cleanedPath, c)
+			if !strings.Contains(absPath, cwd) { // Check if it is in current directory
+				return success(w, absPath, c)
+			}
 		}
 	}
 
 	// Assume that the path is not an actual path but a search query by the user and it might exist
 	if cacheEntry, ok := c.GetCacheEntry(filepath.Base(path)); ok {
-		return success(w, cacheEntry.Path, c)
+		if !ignoreDir {
+			return success(w, cacheEntry.Path, c)
+		} else {
+			if !strings.Contains(cacheEntry.Path, cwd) { // Check if it is in current directory
+				return success(w, cacheEntry.Path, c)
+			}
+		}
 	}
-	var pathReturned string
-	if !ignoreDir {
-		traverseAndMatchDir(w, ".", path, &pathReturned, c) // Walk inside working directory
-	}
-	cwd, err := os.Getwd()
-	HandleError(err)
-	traverseAndMatchDir(w, filepath.Dir(cwd), path, &pathReturned, c) // Walk from one directory above
-	usrHome, err := os.UserHomeDir()
-	HandleError(err)
-	traverseAndMatchDir(w, usrHome, path, &pathReturned, c) // Walk from $HOME
 
-	if len(pathReturned) == 0 {
-		// pathfinder failed to find the directory and prints
-		// the path (user input) to stdout for the bash script
-		// to capture and return as an error msg
-		// fmt.Println(path)
-		fmt.Fprint(w, path)
-		return EXIT_FOLDERNOTFOUND
-	} else {
+	var pathReturned string
+	var dirsAlreadyWalked []string // to ignore walking through already walked directories
+
+	// TODO: Goroutines or a new algorithm
+	if !ignoreDir {
+		if traverseAndMatchDir(w, cwd, path, &pathReturned, dirsAlreadyWalked, c) {
+			// Walk inside working directory
+			return success(w, pathReturned, c)
+		}
+	}
+
+	dirsAlreadyWalked = append(dirsAlreadyWalked, cwd)
+	if traverseAndMatchDir(w, filepath.Dir(cwd), path, &pathReturned, dirsAlreadyWalked, c) {
+		// Walk from one directory above
 		return success(w, pathReturned, c)
 	}
+
+	usrHome, err := os.UserHomeDir()
+	HandleError(err)
+	dirsAlreadyWalked = append(dirsAlreadyWalked, filepath.Dir(cwd))
+	if traverseAndMatchDir(w, usrHome, path, &pathReturned, dirsAlreadyWalked, c) {
+		// Walk from $HOME
+		return success(w, pathReturned, c)
+	}
+
+	// pathfinder failed to find the directory and prints
+	// the path (user input) to stdout for the bash script
+	// to capture and return as an error msg
+	fmt.Fprint(w, path)
+	return EXIT_FOLDERNOTFOUND
 }
 
-func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathReturned *string, c *Cache) {
-	if !strings.HasPrefix(filepath.Base(dirName), ".") {
+func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathReturned *string, dirsAlreadyWalked []string, c *Cache) bool {
+	if !strings.HasPrefix(filepath.Base(dirName), ".") && !slices.Contains(dirsAlreadyWalked, dirName) {
 		file, err := os.Open(dirName)
 		HandleError(err)
 		defer file.Close()
@@ -113,29 +130,24 @@ func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathRetu
 			if f.IsDir() {
 				if f.Name() == searchDir {
 					*pathReturned = path
+					return true
 				} else {
-					traverseAndMatchDir(w, path, searchDir, pathReturned, c)
+					if traverseAndMatchDir(w, path, searchDir, pathReturned, dirsAlreadyWalked, c) {
+						return true
+					}
 				}
 			}
 		}
 	}
+	return false
 }
 
-func success(w io.Writer, path string, c *Cache) int{
+func success(w io.Writer, path string, c *Cache) int {
 	// Prints to stdout for bash script to capture
-	// fmt.Println(path)
 	fmt.Fprint(w, path)
 	c.SetPreviousDir()
 	c.SetCacheEntry(path)
 	return EXIT_SUCCESS
-}
-
-func checkDirExists(path string) bool {
-	if _, err := os.Stat(path); os.IsNotExist(err) {
-		return false
-	} else {
-		return true
-	}
 }
 
 func HandleError(err error) {
