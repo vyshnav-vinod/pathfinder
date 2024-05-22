@@ -5,7 +5,6 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"time"
 
@@ -122,7 +121,7 @@ func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
 	}
 
 	var pathReturned string
-	var dirsAlreadyWalked []string // to ignore walking through already walked directories
+	dirsAlreadyWalked := make(map[string]struct{}) // to ignore walking through already walked directories
 
 	// TODO: Goroutines or a new algorithm
 	if !ignoreDir {
@@ -132,7 +131,7 @@ func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
 		}
 	}
 
-	dirsAlreadyWalked = append(dirsAlreadyWalked, cwd)
+	dirsAlreadyWalked[cwd] = struct{}{}
 	if traverseAndMatchDir(w, filepath.Dir(cwd), path, &pathReturned, dirsAlreadyWalked, c) {
 		// Walk from one directory above
 		return success(w, pathReturned, c)
@@ -140,7 +139,7 @@ func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
 
 	usrHome, err := os.UserHomeDir()
 	HandleError(err)
-	dirsAlreadyWalked = append(dirsAlreadyWalked, filepath.Dir(cwd))
+	dirsAlreadyWalked[filepath.Dir(cwd)] = struct{}{}
 	if traverseAndMatchDir(w, usrHome, path, &pathReturned, dirsAlreadyWalked, c) {
 		// Walk from $HOME
 		return success(w, pathReturned, c)
@@ -153,32 +152,37 @@ func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
 	return EXIT_FOLDERNOTFOUND
 }
 
-func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathReturned *string, dirsAlreadyWalked []string, c *Cache) bool {
-	if !strings.HasPrefix(filepath.Base(dirName), ".") && !slices.Contains(dirsAlreadyWalked, dirName) {
-		file, err := os.Open(dirName)
+func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathReturned *string, dirsAlreadyWalked map[string]struct{}, c *Cache) bool {
+	if strings.HasPrefix(filepath.Base(dirName), ".") {
+		return false
+	}
+	if _, ok := dirsAlreadyWalked[dirName]; ok {
+		return false
+	}
+	file, err := os.Open(dirName)
+	HandleError(err)
+	defer file.Close()
+	dirEntries, err := file.Readdirnames(0)
+	HandleError(err)
+	for _, n := range dirEntries {
+		path, err := filepath.Abs(filepath.Join(dirName, n))
 		HandleError(err)
-		defer file.Close()
-		dirEntries, err := file.Readdirnames(0)
-		HandleError(err)
-		for _, n := range dirEntries {
-			path, err := filepath.Abs(filepath.Join(dirName, n))
-			HandleError(err)
-			f, err := os.Stat(path)
-			if os.IsNotExist(err) {
-				continue
-			}
-			if f.IsDir() {
-				if f.Name() == searchDir {
-					*pathReturned = path
+		f, err := os.Stat(path)
+		if os.IsNotExist(err) {
+			continue
+		}
+		if f.IsDir() {
+			if f.Name() == searchDir {
+				*pathReturned = path
+				return true
+			} else {
+				if traverseAndMatchDir(w, path, searchDir, pathReturned, dirsAlreadyWalked, c) {
 					return true
-				} else {
-					if traverseAndMatchDir(w, path, searchDir, pathReturned, dirsAlreadyWalked, c) {
-						return true
-					}
 				}
 			}
 		}
 	}
+
 	return false
 }
 
