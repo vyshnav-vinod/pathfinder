@@ -1,5 +1,5 @@
 // Test for popCache is depended on test for SetCacheEntry!!
-// No explicit test is done for GetCacheEntry as it is being 
+// No explicit test is done for GetCacheEntry as it is being
 // Checked in two tests and also is a very-less error prone
 // function!!
 
@@ -15,13 +15,15 @@ var c Cache
 
 var (
 	toPopEntryLRU = "entry/to/pop/LRU" // will be popped according to LRU
-	toPopEntryLFU = "entry/to/popLFU" // Will be popped according to LFU
+	toPopEntryLFU = "entry/to/popLFU"  // Will be popped according to LFU
 
 )
 
 func setup() {
 	tmpFile, err := os.CreateTemp("", "cache_pf_*.json")
-	HandleError(err)
+	if err != nil {
+		HandleError(err)
+	}
 	c = Cache{
 		file:     tmpFile.Name(),
 		maxCap:   10,
@@ -30,7 +32,10 @@ func setup() {
 }
 
 func teardown() {
-	HandleError(os.Remove(c.file))
+	err := os.Remove(c.file)
+	if err != nil {
+		HandleError(err)
+	}
 }
 
 func TestMain(m *testing.M) {
@@ -79,8 +84,8 @@ func Test_SetCacheEntry(t *testing.T) {
 // Test for popCache is depended on test for SetCacheEntry
 func Test_popCache(t *testing.T) {
 	c.LoadCache()
-	var popEntries = []string{toPopEntryLRU,toPopEntryLFU}
-	for _, j := range popEntries{
+	var popEntries = []string{toPopEntryLRU, toPopEntryLFU}
+	for _, j := range popEntries {
 		c.popCache()
 		if entry, ok := c.GetCacheEntry(filepath.Base(j)); ok {
 			t.Errorf("popCache() failed to pop %v", entry)

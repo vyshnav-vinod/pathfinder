@@ -43,9 +43,14 @@ func (c *Cache) CheckCache() {
 
 	// Cache.file should be cache.json in the user's cache dir
 	if _, err := os.Stat(c.file); os.IsNotExist(err) {
-		HandleError(os.MkdirAll(filepath.Dir(c.file), 0777))
+		err = os.MkdirAll(filepath.Dir(c.file), 0777)
+		if err != nil {
+			HandleError(err)
+		}
 		_, err = os.Create(c.file)
-		HandleError(err)
+		if err != nil {
+			HandleError(err)
+		}
 	}
 	c.validateCache()
 }
@@ -55,26 +60,40 @@ func (c *Cache) validateCache() {
 	// write a default cache data into it
 	// This check is to prevent "assignment to entry in nil map panic"
 	f, err := os.ReadFile(c.file)
-	HandleError(err)
+	if err != nil {
+		HandleError(err)
+	}
 	if len(f) == 0 {
 		tmpMap := make(map[string]CacheEntry)
 		usrHome, err := os.UserHomeDir()
-		HandleError(err)
+		if err != nil {
+			HandleError(err)
+		}
 		tmpMap[PREV_DIR_ENTRY] = CacheEntry{
 			Path:      usrHome,
 			Frequency: -1,
 		}
 		t, err := json.MarshalIndent(tmpMap, "", " ")
-		HandleError(err)
-		HandleError(os.WriteFile(c.file, t, 077))
+		if err != nil {
+			HandleError(err)
+		}
+		err = os.WriteFile(c.file, t, 077)
+		if err != nil {
+			HandleError(err)
+		}
 	}
 }
 
 func (c *Cache) LoadCache() {
 	// Load the cache contents to memory
 	f, err := os.ReadFile(c.file)
-	HandleError(err)
-	HandleError(json.Unmarshal(f, &c.contents))
+	if err != nil {
+		HandleError(err)
+	}
+	err = json.Unmarshal(f, &c.contents)
+	if err != nil {
+		HandleError(err)
+	}
 }
 
 func (c *Cache) GetPreviousDir() string {
@@ -83,14 +102,21 @@ func (c *Cache) GetPreviousDir() string {
 
 func (c *Cache) SetPreviousDir() {
 	cwd, err := os.Getwd()
-	HandleError(err)
+	if err != nil {
+		HandleError(err)
+	}
 	c.contents[PREV_DIR_ENTRY] = CacheEntry{
 		Path:      cwd,
 		Frequency: -1,
 	}
 	writeContent, err := json.MarshalIndent(c.contents, "", " ")
-	HandleError(err)
-	HandleError(os.WriteFile(c.file, writeContent, 077))
+	if err != nil {
+		HandleError(err)
+	}
+	err = os.WriteFile(c.file, writeContent, 077)
+	if err != nil {
+		HandleError(err)
+	}
 }
 
 func (c *Cache) GetCacheEntry(entry string) (cacheEntry CacheEntry, ok bool) {
@@ -124,8 +150,13 @@ func (c *Cache) SetCacheEntry(entry string) {
 			c.popCache()
 		}
 		writeContent, err := json.MarshalIndent(c.contents, "", " ")
-		HandleError(err)
-		HandleError(os.WriteFile(c.file, writeContent, 077))
+		if err != nil {
+			HandleError(err)
+		}
+		err = os.WriteFile(c.file, writeContent, 077)
+		if err != nil {
+			HandleError(err)
+		}
 	}
 }
 
@@ -154,5 +185,8 @@ func (c *Cache) popCache() {
 }
 
 func (c *Cache) cleanCache() {
-	HandleError(os.WriteFile(c.file, []byte{}, 0777))
+	err := os.WriteFile(c.file, []byte{}, 0777)
+	if err != nil {
+		HandleError(err)
+	}
 }

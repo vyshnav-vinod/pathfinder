@@ -94,9 +94,13 @@ func main() {
 func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
 
 	absPath, err := filepath.Abs(path)
-	HandleError(err)
+	if err != nil {
+		HandleError(err)
+	}
 	cwd, err := os.Getwd()
-	HandleError(err)
+	if err != nil {
+		HandleError(err)
+	}
 
 	if _, err := os.Stat(absPath); !os.IsNotExist(err) {
 		// To support ~, .. , etc
@@ -138,7 +142,9 @@ func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
 	}
 
 	usrHome, err := os.UserHomeDir()
-	HandleError(err)
+	if err != nil {
+		HandleError(err)
+	}
 	dirsAlreadyWalked[filepath.Dir(cwd)] = struct{}{}
 	if traverseAndMatchDir(w, usrHome, path, &pathReturned, dirsAlreadyWalked, c) {
 		// Walk from $HOME
@@ -160,13 +166,19 @@ func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathRetu
 		return false
 	}
 	file, err := os.Open(dirName)
-	HandleError(err)
+	if err != nil {
+		HandleError(err)
+	}
 	defer file.Close()
 	dirEntries, err := file.Readdirnames(0)
-	HandleError(err)
+	if err != nil {
+		HandleError(err)
+	}
 	for _, n := range dirEntries {
 		path, err := filepath.Abs(filepath.Join(dirName, n))
-		HandleError(err)
+		if err != nil {
+			HandleError(err)
+		}
 		f, err := os.Stat(path)
 		if os.IsNotExist(err) {
 			continue
@@ -195,10 +207,8 @@ func success(w io.Writer, path string, c *Cache) int {
 }
 
 func HandleError(err error) {
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "[Error] %s\n", err)
-		os.Exit(EXIT_ERR)
-	}
+	fmt.Fprintf(os.Stderr, "[Error] %s\n", err)
+	os.Exit(EXIT_ERR)
 }
 
 func InitCache() *Cache {
@@ -206,7 +216,9 @@ func InitCache() *Cache {
 	if _, ok := os.LookupEnv("PF_TMP_TEST"); !ok {
 		// This is done for testing. See main_test.go for more info
 		cf, err := os.UserCacheDir()
-		HandleError(err)
+		if err != nil {
+			HandleError(err)
+		}
 		cacheFile = filepath.Join(cf, "pathfinder", "cache.json")
 	} else {
 		// This is done for testing. See main_test.go for more info

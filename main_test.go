@@ -18,7 +18,10 @@ func Test_pathfinder(t *testing.T) {
 	}
 
 	defer t.Cleanup(func() {
-		HandleError(os.Unsetenv(testEnv))
+		err = os.Unsetenv(testEnv)
+		if err != nil {
+			HandleError(err)
+		}
 	})
 
 	err = os.Chdir(tmpDir)

@@ -1,6 +1,6 @@
 # pathfinder
 
-**Version : v0.1.0 Build : 202405221514**
+**Version : v0.1.1 Build : 202405222214**
 
 Pathfinder is a command-line tool that helps you navigate between directories without needing to specify the entire path. Simply specify the name of the directory you want to switch to, and Pathfinder will handle the rest. It also supports specifying entire paths if needed.
 
