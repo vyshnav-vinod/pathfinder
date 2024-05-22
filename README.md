@@ -1,5 +1,7 @@
 # pathfinder
 
+**Version : v0.1.0 Build : 202405221514**
+
 Pathfinder is a command-line tool that helps you navigate between directories without needing to specify the entire path. Simply specify the name of the directory you want to switch to, and Pathfinder will handle the rest. It also supports specifying entire paths if needed.
 
 ## Features
@@ -12,7 +14,7 @@ Pathfinder is a command-line tool that helps you navigate between directories wi
 ## Installation
 
 > [!WARNING]
-> Pathfinder is only tested in Linux right now.
+> Pathfinder is only tested in Linux right now. This will not work on Windows!!
 
 
 - Clone this repository
@@ -53,9 +55,10 @@ pf [directory name/path] (flags)
 ## Flags
 
 - `-b, --back` : Move back to the previous directory from where `pathfinder` was called.
-- `-i, --ignore` : Ignore searching for the folder in the current directory
+- `-i, --ignore` : Ignore searching for the folder in the current directory.
 - `--clean` : Clean the cache. If you encounter any unexpected behaviour, try this.
-- `-h, --help` : Display the help message
+- `--info` : Display version and build number.
+- `-h, --help` : Display the help message.
 
 ## Examples
 
@@ -76,4 +79,8 @@ pf -b
 
 ## Issues
 
-Pathfinder is still in early stages. You can raise an [issue](https://github.com/vyshnav-vinod/pathfinder/issues) and i will be glad to help. You can also contribute to pathfinder by raising a PR. But first, it would be better if you raised an issue regarding what you will be adding.
+Pathfinder is still in early stages. You can raise an [issue](https://github.com/vyshnav-vinod/pathfinder/issues) and i will be glad to help. 
+
+## Contributing
+
+Do you have a new feature idea? Or do you want to improve the performance? Or know how to fix a bug? You can raise a new Pull Request. If you are adding a new feature, please open a issue stating what you will add to pathfinder and then you are good to go. If you feel stuck with something, raise an issue and i will be happy to help.
