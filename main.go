@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"time"
 
 	"github.com/integrii/flaggy"
 )
@@ -26,7 +27,24 @@ var (
 	DESCRIPTION = "A command line tool to move between directories easily and fast."
 )
 
+var (
+	// go run -ldflags "-X main.DEV=true" .
+	DEV       = "false" // Ignore, Build tag used for dev testing and some benchmarks
+	timeStart time.Time
+)
+
 func main() {
+
+	// Ignore, This is a build flag for testing purposes
+	if DEV == "true" {
+		timeStart = time.Now()
+	}
+
+	defer func() {
+		if DEV == "true" {
+			fmt.Printf("It took %v\n", time.Since(timeStart))
+		}
+	}()
 
 	// Flags
 	var (
@@ -66,7 +84,12 @@ func main() {
 		flaggy.ShowHelpAndExit("Please provide arguments")
 	}
 
-	os.Exit(pathfinder(os.Stdout, c, ignoreDir, path))
+	// Ignore, This is a build flag for testing purposes
+	if DEV == "false" {
+		os.Exit(pathfinder(os.Stdout, c, ignoreDir, path))
+	} else {
+		fmt.Printf("\npathfinder returned exit code %d\n", pathfinder(os.Stdout, c, ignoreDir, path))
+	}
 }
 
 func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
