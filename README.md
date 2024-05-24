@@ -1,12 +1,13 @@
 # pathfinder
 
-**Version : v0.1.1 Build : 202405222214**
+**Version : v0.1.2 Build : 202405242303**
 
 Pathfinder is a command-line tool that helps you navigate between directories without needing to specify the entire path. Simply specify the name of the directory you want to switch to, and Pathfinder will handle the rest. It also supports specifying entire paths if needed.
 
 ## Features
 
 - Quickly switch from one directory to another without entering the full path
+- Mention the parent directory to avoid jumping to other unwanted folders
 - Pathfinder also supports full paths
 - Use the `-b` flag to get back to the previous directory you were in
 - Uses a cache to store frequently visited directories, so you can move between them faster
@@ -65,6 +66,11 @@ pf [directory name/path] (flags)
 - Go to the folder named `dirname`
 ```bash
 pf dirname
+```
+
+- Go to the folder named `dirname` under the `parentdir` folder
+```bash
+pf parentdir/dirname
 ```
 
 - Go to the folder named `dirname` using full path
