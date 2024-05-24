@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -119,33 +120,42 @@ func (c *Cache) SetPreviousDir() {
 	}
 }
 
-func (c *Cache) GetCacheEntry(entry string) (cacheEntry CacheEntry, ok bool) {
-	if cache, found := c.contents[entry]; found {
-		return cache, true
+func (c *Cache) GetCacheEntry(entry pathInfo) (cacheEntry CacheEntry, ok bool) {
+	baseInput := filepath.Base(entry.userInput)
+	if cache, found := c.contents[baseInput]; found {
+		if !entry.restrict {
+			return cache, true
+		} else {
+			if strings.Contains(cache.Path, entry.userInput) {
+				return cache, true
+			}
+		}
 	}
 	return CacheEntry{}, false
 }
 
-func (c *Cache) SetCacheEntry(entry string) {
+func (c *Cache) SetCacheEntry(entry pathInfo) {
 	// Shoudl check if entry is in cache ,if yes just update
 	// else pop from cache and add new entry
 	home, _ := os.UserHomeDir()
-	if !(entry == home) { //  Do not add home directory to cache
-		if cacheEntry, ok := c.GetCacheEntry(filepath.Base(entry)); ok {
-			if cacheEntry.Path == entry {
-				c.contents[filepath.Base(entry)] = CacheEntry{
+	if !((entry.path) == home) {
+		if cacheEntry, ok := c.GetCacheEntry(entry); ok {
+			if cacheEntry.Path == entry.path {
+				c.contents[filepath.Base(entry.path)] = CacheEntry{
 					Path:      cacheEntry.Path,
 					Frequency: cacheEntry.Frequency + 1,
 					LastHit:   time.Now(),
 				}
 			}
+			// TODO: Else condition
 		} else {
-			c.contents[filepath.Base(entry)] = CacheEntry{
-				Path:      entry,
+			c.contents[filepath.Base(entry.path)] = CacheEntry{
+				Path:      entry.path,
 				Frequency: 0,
 				LastHit:   time.Now(),
 			}
 		}
+
 		if len(c.contents) > (c.maxCap + 1) { // +1 to denote the previous dir store
 			c.popCache()
 		}

@@ -232,7 +232,6 @@ func success(w io.Writer, path pathInfo, c *Cache) int {
 	// Prints to stdout for bash script to capture
 	fmt.Fprint(w, path.path)
 	c.SetPreviousDir()
-	fmt.Println("\nentry : ", path)
 	c.SetCacheEntry(path)
 	return EXIT_SUCCESS
 }
