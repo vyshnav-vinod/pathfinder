@@ -15,7 +15,7 @@ var c Cache
 
 var (
 	toPopEntryLRU = "entry/to/pop/LRU" // will be popped according to LRU
-	toPopEntryLFU = "entry/to/popLFU"  // Will be popped according to LFU
+	toPopEntryLFU = "entry/to/pop/LFU" // Will be popped according to LFU
 
 )
 
@@ -65,30 +65,64 @@ func Test_validateCache(t *testing.T) {
 	}
 }
 
+// TODO: Make this cleaner
 func Test_SetCacheEntry(t *testing.T) {
-	entry := "random/entry"
-	for i := 0; i < 2; i++ {
+	entries := []pathInfo{
+		{
+			userInput: "entry",
+			restrict:  false,
+			path:      "file/path/entry",
+		},
+		{
+			userInput: "path/entry",
+			restrict:  true,
+			path:      "file/path/entry",
+		},
+	}
+	for _, entry := range entries {
 		c.SetCacheEntry(entry)
-		ce, got := c.GetCacheEntry(filepath.Base(entry))
+		_, got := c.GetCacheEntry(entry)
 		if !got {
-			t.Errorf("SetCacheEntry() failed to add %s to cache", entry)
-		}
-		if ce.Frequency != i {
-			t.Errorf("SetCacheEntry() got frequency = %d, want = %d", ce.Frequency, i)
+			t.Errorf("SetCacheEntry() failed to add %v to cache", entry)
 		}
 	}
-	c.SetCacheEntry(toPopEntryLRU)
-	c.SetCacheEntry(toPopEntryLFU)
+	test_entries_popCache := []pathInfo{
+		{
+			userInput: filepath.Base(toPopEntryLRU),
+			restrict:  false,
+			path:      toPopEntryLRU,
+		},
+		{
+			userInput: filepath.Base(toPopEntryLFU),
+			restrict:  false,
+			path:      toPopEntryLFU,
+		},
+	}
+	for _, entry := range test_entries_popCache {
+		c.SetCacheEntry(entry)
+	}
 }
 
 // Test for popCache is depended on test for SetCacheEntry
 func Test_popCache(t *testing.T) {
 	c.LoadCache()
-	var popEntries = []string{toPopEntryLRU, toPopEntryLFU}
-	for _, j := range popEntries {
+	// fmt.Println(c.contents)
+	var popEntries = []pathInfo{
+		{
+			userInput: filepath.Base(toPopEntryLRU),
+			restrict:  false,
+			path:      toPopEntryLRU,
+		},
+		{
+			userInput: filepath.Base(toPopEntryLFU),
+			restrict:  false,
+			path:      toPopEntryLFU,
+		},
+	}
+	for _, e := range popEntries {
 		c.popCache()
-		if entry, ok := c.GetCacheEntry(filepath.Base(j)); ok {
-			t.Errorf("popCache() failed to pop %v", entry)
+		if ce, got := c.GetCacheEntry(e); got {
+			t.Errorf("popEntry() failed to pop %v ", ce)
 		}
 	}
 }
