@@ -32,6 +32,21 @@ var (
 	timeStart time.Time
 )
 
+type pathInfo struct {
+	// Stores the user input
+	userInput string
+	// Restrict is used to denote whether user has specified
+	// the parent directory of the directory to search as well.
+	// Eg: User has specified "parent/searchfolder"
+	// We must only find "searchfolder" which is a child of the
+	// directory named "parent". Any other folders named
+	// "searchfolder" will be rejected if their parent directory
+	// is not "parent"
+	restrict bool
+	// Full path (if found)
+	path string
+}
+
 func main() {
 
 	// Ignore, This is a build flag for testing purposes
@@ -77,7 +92,7 @@ func main() {
 	}
 	if previousDir {
 		path, _ := filepath.Abs(c.GetPreviousDir())
-		os.Exit(success(os.Stdout, path, c))
+		os.Exit(success(os.Stdout, pathInfo{path: path, restrict: false, userInput: filepath.Base(path)}, c))
 	}
 	if path == "" {
 		flaggy.ShowHelpAndExit("Please provide arguments")
@@ -91,9 +106,9 @@ func main() {
 	}
 }
 
-func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
+func pathfinder(w io.Writer, c *Cache, ignoreDir bool, searchPath string) int {
 
-	absPath, err := filepath.Abs(path)
+	absPath, err := filepath.Abs(searchPath)
 	if err != nil {
 		HandleError(err)
 	}
@@ -105,40 +120,44 @@ func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
 	if _, err := os.Stat(absPath); !os.IsNotExist(err) {
 		// To support ~, .. , etc
 		if !ignoreDir {
-			return success(w, absPath, c)
+			return success(w, pathInfo{path: absPath, restrict: false, userInput: filepath.Base(absPath)}, c)
 		} else {
 			if !strings.Contains(absPath, cwd) { // Check if it is in current directory
-				return success(w, absPath, c)
+				return success(w, pathInfo{path: absPath, restrict: false, userInput: filepath.Base(absPath)}, c)
 			}
 		}
 	}
+
+	pathInfo := pathInfo{userInput: searchPath}
+	pathInfo.restrict = !(len(strings.Split(searchPath, "/")) == 1)
 
 	// Assume that the path is not an actual path but a search query by the user and it might exist
-	if cacheEntry, ok := c.GetCacheEntry(filepath.Base(path)); ok {
+	if cacheEntry, ok := c.GetCacheEntry(pathInfo); ok {
 		if !ignoreDir {
-			return success(w, cacheEntry.Path, c)
+			pathInfo.path = cacheEntry.Path
+			return success(w, pathInfo, c)
 		} else {
 			if !strings.Contains(cacheEntry.Path, cwd) { // Check if it is in current directory
-				return success(w, cacheEntry.Path, c)
+				pathInfo.path = cacheEntry.Path
+				return success(w, pathInfo, c)
 			}
 		}
 	}
 
-	var pathReturned string
 	dirsAlreadyWalked := make(map[string]struct{}) // to ignore walking through already walked directories
 
 	// TODO: Goroutines or a new algorithm
 	if !ignoreDir {
-		if traverseAndMatchDir(w, cwd, path, &pathReturned, dirsAlreadyWalked, c) {
+		if traverseAndMatchDir(w, cwd, pathInfo, &pathInfo.path, dirsAlreadyWalked, c) {
 			// Walk inside working directory
-			return success(w, pathReturned, c)
+			return success(w, pathInfo, c)
 		}
 	}
 
 	dirsAlreadyWalked[cwd] = struct{}{}
-	if traverseAndMatchDir(w, filepath.Dir(cwd), path, &pathReturned, dirsAlreadyWalked, c) {
+	if traverseAndMatchDir(w, filepath.Dir(cwd), pathInfo, &pathInfo.path, dirsAlreadyWalked, c) {
 		// Walk from one directory above
-		return success(w, pathReturned, c)
+		return success(w, pathInfo, c)
 	}
 
 	usrHome, err := os.UserHomeDir()
@@ -146,19 +165,19 @@ func pathfinder(w io.Writer, c *Cache, ignoreDir bool, path string) int {
 		HandleError(err)
 	}
 	dirsAlreadyWalked[filepath.Dir(cwd)] = struct{}{}
-	if traverseAndMatchDir(w, usrHome, path, &pathReturned, dirsAlreadyWalked, c) {
+	if traverseAndMatchDir(w, usrHome, pathInfo, &pathInfo.path, dirsAlreadyWalked, c) {
 		// Walk from $HOME
-		return success(w, pathReturned, c)
+		return success(w, pathInfo, c)
 	}
 
 	// pathfinder failed to find the directory and prints
 	// the path (user input) to stdout for the bash script
 	// to capture and return as an error msg
-	fmt.Fprint(w, path)
+	fmt.Fprint(w, searchPath)
 	return EXIT_FOLDERNOTFOUND
 }
 
-func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathReturned *string, dirsAlreadyWalked map[string]struct{}, c *Cache) bool {
+func traverseAndMatchDir(w io.Writer, dirName string, searchDir pathInfo, pathReturned *string, dirsAlreadyWalked map[string]struct{}, c *Cache) bool {
 	if strings.HasPrefix(filepath.Base(dirName), ".") {
 		return false
 	}
@@ -184,9 +203,20 @@ func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathRetu
 			continue
 		}
 		if f.IsDir() {
-			if f.Name() == searchDir {
-				*pathReturned = path
-				return true
+			if f.Name() == filepath.Base(searchDir.userInput) {
+				if !searchDir.restrict {
+					*pathReturned = path
+					return true
+				} else {
+					if strings.Contains(path, searchDir.userInput) {
+						*pathReturned = path
+						return true
+					} else {
+						if traverseAndMatchDir(w, path, searchDir, pathReturned, dirsAlreadyWalked, c) {
+							return true
+						}
+					}
+				}
 			} else {
 				if traverseAndMatchDir(w, path, searchDir, pathReturned, dirsAlreadyWalked, c) {
 					return true
@@ -198,10 +228,11 @@ func traverseAndMatchDir(w io.Writer, dirName string, searchDir string, pathRetu
 	return false
 }
 
-func success(w io.Writer, path string, c *Cache) int {
+func success(w io.Writer, path pathInfo, c *Cache) int {
 	// Prints to stdout for bash script to capture
-	fmt.Fprint(w, path)
+	fmt.Fprint(w, path.path)
 	c.SetPreviousDir()
+	fmt.Println("\nentry : ", path)
 	c.SetCacheEntry(path)
 	return EXIT_SUCCESS
 }
